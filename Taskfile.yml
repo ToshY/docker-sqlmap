@@ -1,0 +1,47 @@
+version: '3'
+
+vars:
+  IMAGE: toshy/docker-sqlmap
+  SQLMAP_VERSION: 1.8.9
+  TARGET: dev
+
+tasks:
+  default:
+    cmds:
+      - task --list
+
+  test:
+    desc: Container test
+    cmds:
+      - task: build
+      - mkdir -p ${PWD}/sqlmap
+      - docker run --rm -it -u $(id -u):$(id -g) -v ${PWD}/sqlmap:/.local/share/sqlmap docker.io/{{.IMAGE}}:{{.TARGET}} {{.CLI_ARGS | default "-h"}}
+
+  # Docker
+  build:
+    desc: Build local images
+    cmds:
+      - docker buildx build --build-arg SQLMAP_VERSION={{.SQLMAP_VERSION}} --tag {{.IMAGE}}:{{.TARGET}} .
+
+  # Shell
+  shell:
+    desc: Container shell
+    vars:
+      TARGET: '{{ .t | default "dev"}}'
+    cmds:
+      - task: build
+      - mkdir -p ${PWD}/sqlmap
+      - docker run --rm -it -u $(id -u):$(id -g) -v ${PWD}/sqlmap:/.local/share/sqlmap --entrypoint=/bin/sh docker.io/{{.IMAGE}}:{{.TARGET}}
+
+  # Development tools
+  mkdocs:
+    desc: MkDocs build
+    cmds:
+      - docker run --rm -it -v ${PWD}:/docs ghcr.io/squidfunk/mkdocs-material:9.5 build
+
+  mkdocs:live:
+    desc: MkDocs development server
+    vars:
+      PORT: '{{.p | default "8001"}}'
+    cmds:
+      - docker run --rm -it -p {{.PORT}}:8000 -v ${PWD}:/docs ghcr.io/squidfunk/mkdocs-material:9.5
